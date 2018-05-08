@@ -198,11 +198,11 @@ def courseSeachbyKeyword(db):
     print("Searching...")
     listOfCourse = db.courses.aggregate(
         [
-            {$match: {$ or:[{title: /. * keyword * /}, {description: /.*keyword * /}, {intendedlearningoutcomes: /.*keyword * /}]}}, 
-            {$project: { CourseCode: "$code", CourseName: "$title", NumberofCredit: "$credits", Section: "$sections.class_name", 
-            SectionID: "$sections.sectionId", DateAndTime: "$sections.offerings.dateAndTime", Quota: "$sections.quota",
-            Enrol: "$sections.enrol", Wait: "$sections.wait", _id: 0}}, 
-            {$sort: {courseCode: 1, "sections.sectionId": 1}}
+            {"$match": {"$ or":[{"title": "/. * keyword * /"}, {"description": "/.*keyword * /"}, {"intendedlearningoutcomes": "/.*keyword * /"}]}},
+            {"$project": { "CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits", "Section": "$sections.class_name",
+                           "SectionID": "$sections.sectionId", "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota",
+                           "Enrol": "$sections.enrol", "Wait": "$sections.wait", "_id": 0}},
+            {"$sort": {"courseCode": 1, "sections.sectionId": 1}}
         ]
     )
     recordNumber = 0
@@ -236,15 +236,14 @@ def courseSeachbyWaitingListSize(db):
     print("Searching...")
     listOfCourse = db.s.aggregate(
     [
-        {$project: {comparedTimeSlotResult1: {$gte: ["$recordTime", startTimeSlot]}},
-        {comparedTimeSlotResult2: {$lte: ["$recordTime", endTimeSlot]}}},
-        {$match: {$and:[{comparedTimeSlotResult1: true}, {comparedTimeSlotResult2: true}]}},
-        {$project: {comparedWaitListSizeResult: {$gte: ["$sections.wait", {$multiply: ["$sections.quota", f]}]}}},
-        {$match: {comparedWaitListSizeResult: true}},
-        {$project: {CourseCode: "$code", CourseName: "$title", NumberofCredit: "$credits", TimeSlot: "$recordTime", Section: "$sections.class_name", Code: "$sections.sectionId",
-                DateAndTime: "$sections.offerings.dateAndTime", Quota: "$sections.quota", Enrol: "$sections.enrol", Wait: "$sections.wait", Satisfied: "comparedWaitListSizeResult", _id: 0}},
-        {$sort: {courseCode: 1, "sections.sectionId": 1}},
-        {$group: {_id: "$sections.sectionId", MatchedTimeSlot: {$max: "$recordTime"}}}
+        {"$project": {"comparedTimeSlotResult1": {"$gte": ["$recordTime", startTimeSlot]},"comparedTimeSlotResult2": {"$lte": ["$recordTime", endTimeSlot]}}},
+        {"$match": {"$and":[{"comparedTimeSlotResult1": True}, {"comparedTimeSlotResult2": True}]}},
+        {"$project": {"comparedWaitListSizeResult": {"$gte": ["$sections.wait", {"$multiply": ["$sections.quota", f]}]}}},
+        {"$match": {"comparedWaitListSizeResult": True}},
+        {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits", "TimeSlot": "$recordTime", "Section": "$sections.class_name", "Code": "$sections.sectionId",
+                      "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota", "Enrol": "$sections.enrol", "Wait": "$sections.wait", "Satisfied": "comparedWaitListSizeResult", "_id": 0}},
+        {"$sort": {"courseCode": 1, "sections.sectionId": 1}},
+        {"$group": {"_id": "$sections.sectionId", "MatchedTimeSlot": {"$max": "$recordTime"}}}
     ]
     )
     recordNumber = 0
@@ -266,7 +265,7 @@ def courseSeachbyWaitingListSize(db):
                                                                     tempNumberofCredit, tempSection, tempCode,
                                                                     tempDateAndTime, tempQuota, tempEnrol,
                                                                     tempWait))
-        if (tempSatisfied == ture):
+        if (tempSatisfied == True):
             print(" yes")
         else:
             print(" no")
