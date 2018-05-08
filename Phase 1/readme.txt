@@ -2,7 +2,7 @@
 Group ID: 2
 Group Members: 
 Lai Kam Hong (khlaiaf, 20310528)
-Chan Chi Kuen (ckchanbh, 20318185)
+Chan Chi Kuen (ckchanbh, 20308185)
 
 2. File list
 |--main.py
