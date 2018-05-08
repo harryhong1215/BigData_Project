@@ -112,7 +112,6 @@ class MongoSpider(scrapy.Spider):
 
             if 'newsect' in class_name:
                 sectionId = tr.xpath('./td[1]/text()').extract_first().split('(', 1)[0].strip()
-
                 section = {
                     'recordTime': record_time,
                     'sectionId': sectionId,
@@ -142,7 +141,6 @@ class MongoSpider(scrapy.Spider):
                 sections.append(section)
                 #print(section)
                 prev_sect = section
-
             else:
                 offering = {
                     # index starts from 1
@@ -165,7 +163,7 @@ class MongoSpider(scrapy.Spider):
 
     def closed(self, reason):
         self.client.close()
-        print('Data Crawling is successful and all data are inserted into the database')
+
 
     def fix_case(self, key):
 
