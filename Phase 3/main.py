@@ -3,16 +3,16 @@ import pymongo
 import scrapy
 import datetime
 import subprocess
-
+import re
 
 # to achiveve program requirement 5.1
 def collectionDroppingandEmptyCollectionCreating(db):
     try:
         print("Dropping collection...")
         # Drop collection "course" if exist
-        db.course.drop()
+        db.courses.drop()
         # Create empty collection "course"
-        db.createCollection("course")
+        db.create_collection("courses")
         print("Collection dropping and empty collection creating are successful.")
     except pymongo.errors.ConnectionFailure as error:
         print("Collection Dropping and Collection Creating Failed! Error Message: \"{}\"".format(error))
@@ -21,14 +21,21 @@ def collectionDroppingandEmptyCollectionCreating(db):
 # to achiveve program requirement 5.2
 def dataCrawling(db):
     try:
-        address = input("Please enter the URL of the website you want to crawl: ")
-        if (address == "default"):
+        # address = input("Please enter the URL of the website you want to crawl: ")
+        url = input('Please enter a URL for data crawling: ')
+        if url == 'default':
+            url = 'http://comp4332.com/trial'
+            # url = 'http://comp4332.com/realistic'
+        with open('url.txt', 'w') as f:
+            f.write(url)
+        subprocess.run('scrapy crawl mongo', shell=True)
+        if (url == "default"):
             strCommand = "scrapy crawl mongo"
             subprocess.run(strCommand, shell=True)
             print("Data are crawled from project webpage.")
             print("Data Crawling is successful and all data are inserted into the database.")
         else:
-            strCommand = "scrapy crawl ClassQuota"
+            strCommand = "scrapy crawl mongo"
             subprocess.run(strCommand, shell=True)
             print("Data are crawled from inputted URL.")
             print("Data Crawling is successful and all data are inserted into the database.")
@@ -39,100 +46,90 @@ def dataCrawling(db):
 
 # to achiveve program requirement 5.3.1
 def courseSeachbyKeyword(db):
-    try:
-        keyword = input("Please enter the keyword(s) of the course you want to search: ")
-        print("Searching...")
-        listOfCourse = db.course.aggregate(
-            [
-                {"$match": {"$ or":[{"courseTitle":" /. * keyword * /"}, {"courseDescription": "/.*keyword * /"}, {
-                    "courseIntentedLearningOutcome": "/.*keyword * /"}]}}, {"$project": {
-                "CourseCode": "$courseCode", "CourseName": "$courseTitle", "NumberofCredit": "$courseCredit",
-                "Section": "$courseSectionList.sectionNumber", "Code": "$courseSectionList.sectionCode",
-                "DateAndTime": "$courseSectionList.sectionOfferingSlot.dateAndTime", "Quota": "$courseSectionList.sectionQuota",
-                "Enrol": "$courseSectionList.sectionEnrolled", "Avail": "$courseSectionList.sectionAvailable",
-                "Wait": "$courseSectionList.sectionWait", "_id": 0}}, {"$sort": {"courseCode": 1,
-                                                                       "courseSectionList.sectionNumber": 1}}
-        ]
-        )
-        recordNumber = 0
-        # After performing seaching
-        for oneCourse in listOfCourse:
-            recordNumber = recordNumber + 1
-            tempCourseCode = oneCourse["CourseCode"]
-            tempCourseName = oneCourse["CourseName"]
-            tempNumberofCredit = oneCourse["NumberofCredit"]
-            tempSection = oneCourse["Section"]
-            tempCode = oneCourse["Code"]
-            tempDateAndTime = oneCourse["DateAndTime"]
-            tempQuota = oneCourse["Quota"]
-            tempEnrol = oneCourse["Enrol"]
-            tempWait = oneCourse["Avail"]
-            print("{:s} {:s} {:d} {:s} {:d} {:s} {:d} {:d} {:d}".format(tempCourseCode, tempCourseName,
-                                                                        tempNumberofCredit, tempSection, tempCode,
-                                                                        tempDateAndTime, tempQuota, tempEnrol,
-                                                                        tempWait))
+    keyword = input("Please enter the keyword(s) of the course you want to search: ")
+    print("Searching...")
+    regex_text = "\\b(" + "|".join(keyword.split()) + ")\\b"
+    REGEX = re.compile(regex_text, re.IGNORECASE)
+    listOfCourse = db.courses.aggregate(
+        [
+            {"$match": {'$or': [{'title': {'$regex': REGEX}}, {'description':{'$regex': REGEX}},{'intendedLearningOutcomes': {'$regex': REGEX}}
+        ]}},
+            {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits",
+                        "SectionID": "$sections.sectionId", "DateAndTime": "$sections.offerings.dateAndTime",
+                          "Quota": "$sections.quota",
+                          "Enrol": "$sections.enrol", "Wait": "$sections.wait","Avail":"$sections.avail", "_id": 0}},
+            {"$sort":{"CourseCode":1}}
+        ])
 
-    except pymongo.errors.ConnectionFailure as error:
-        print("Course searching Failed! Error Message: \"{}\"".format(error))
-
+    print(list(listOfCourse))
+    recordNumber = 0
+    # After performing seaching
+    for oneCourse in listOfCourse:
+        recordNumber = recordNumber + 1
+        tempCourseCode = oneCourse['CourseCode']
+        tempCourseName = oneCourse["CourseName"]
+        tempNumberofCredit = oneCourse["NumberofCredit"]
+        tempSection = oneCourse["Section"]
+        tempCode = oneCourse["SectionID"]
+        tempDateAndTime = oneCourse["DateAndTime"]
+        tempQuota = oneCourse["Quota"]
+        tempEnrol = oneCourse["Enrol"]
+        tempWait = oneCourse["Wait"]
+        tempAvail = oneCourse["Avail"]
+        # print("{:s} {:s} {:d} {:s} {:d} {:s} {:d} {:d} {:f} {:f}".format(tempCourseCode, tempCourseName,
+        #                                                             tempNumberofCredit, tempSection, tempCode,
+        #                                                             tempDateAndTime, tempQuota, tempEnrol,
+        #                                                             tempWait,tempAvail))
+        # print(tempCourseCode, tempCourseName,tempNumberofCredit, tempSection, tempCode,
+        #       tempDateAndTime, tempQuota, tempEnrol,tempWait,tempAvail)
 
 # to achiveve program requirement 5.3.2
 def courseSeachbyWaitingListSize(db):
-    try:
-        f = input(
-            "Please enter the multiple of the waiting list size with enrolled student which is a non-negative number: ")
-        while (int(f) < 0):
-            f = input("The number is invalid. Please input again: ")
-        start_ts = input("Please enter the starting time slot: ")
-        end_ts = input("Please enter the ending time slot: ")
-        startTimeSlot = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
-        endTimeSlot = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
-        print("Searching...")
-        listOfCourse = db.course.aggregate(
-        #     [
-        # {"$project": {"comparedTimeSlotResult1": {"$gte": ["$dataRetrievalTime", "startTimeSlot"]}},{"comparedTimeSlotResult2": {"$lte": ["$dataRetrievalTime", "endTimeSlot"]}}},
-        # {"$match": {"$ and":[{"comparedTimeSlotResult1": "true"}, {"comparedTimeSlotResult2": "true"}]}},
-        # {"$project": {"comparedWaitListSizeResult": {"$gte": ["$courseSectionList.sectionWait", {"$multiply": [
-        #     "$courseSectionList.sectionQuota", "f"]}]}}},
-        # {"$match": {"comparedWaitListSizeResult": "true"}},
-        # {"$project": {"CourseCode": "$courseCode", "CourseName": "$courseTitle", "NumberofCredit": "$courseCredit",
-        #               "TimeSlot": "$dataRetrievalTime", "Section": "$courseSectionList.sectionNumber",
-        #               "Code": "$courseSectionList.sectionCode",
-        #               "DateAndTime": "$courseSectionList.sectionOfferingSlot.dateAndTime",
-        #               "Quota": "$courseSectionList.sectionQuota", "Enrol": "$courseSectionList.sectionEnrolled",
-        #               "Avail": "$courseSectionList.sectionAvailable", "Wait": "$courseSectionList.sectionWait",
-        #               "Satisfied": "comparedWaitListSizeResult", "_id": 0}},
-        # {"$sort": {"courseCode": 1, "courseSectionList.sectionNumber": 1}},
-        # {"$group": {"_id": "$courseSectionList.sectionNumber", "MatchedTimeSlot": {"$max": "$dataRetrievalTime"}}}
-        # ]
-        )
-        recordNumber = 0
-        # After performing searching
-        for oneCourse in listOfCourse:
-            recordNumber = recordNumber + 1
-            tempCourseCode = oneCourse["CourseCode"]
-            tempCourseName = oneCourse["CourseName"]
-            tempNumberofCredit = oneCourse["NumberofCredit"]
-            tempTimeSlot = oneCourse["TimeSlot"]
-            tempSection = oneCourse["Section"]
-            tempCode = oneCourse["Code"]
-            tempDateAndTime = oneCourse["DateAndTime"]
-            tempQuota = oneCourse["Quota"]
-            tempEnrol = oneCourse["Enrol"]
-            tempWait = oneCourse["Avail"]
-            tempSatisfied = oneCourse["Satisfied"]
-            print("{:s} {:s} {:d} {:s} {:d} {:s} {:d} {:d} {:d}".format(tempCourseCode, tempCourseName,
-                                                                        tempNumberofCredit, tempSection, tempCode,
-                                                                        tempDateAndTime, tempQuota, tempEnrol,
-                                                                        tempWait))
-            if (tempSatisfied == "ture"):
-                print(" yes")
-            else:
-                print(" no")
-
-    except pymongo.errors.ConnectionFailure as error:
-        print("Course searching Failed! Error Message: \"{}\"".format(error))
-
+    f = input(
+        "Please enter the multiple of the waiting list size with enrolled student which is a non-negative number: ")
+    while (int(f) < 0):
+        f = input("The number is invalid. Please input again: ")
+    start_ts = input("Please enter the starting time slot: ")
+    end_ts = input("Please enter the ending time slot: ")
+    startTimeSlot = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
+    endTimeSlot = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
+    print("Searching...")
+    listOfCourse = db.courses.aggregate(
+        [
+            {"$project": {"comparedTimeSlotResult1": {"$gte": ["$recordTime", startTimeSlot]},
+                          "comparedTimeSlotResult2": {"$lte": ["$recordTime", endTimeSlot]}},
+                          "comparedWaitListSizeResult": {"$gte": ["$sections.wait", {"$multiply": ["$sections.quota", f]}]}},
+            {"$match": {"$and": [{"comparedTimeSlotResult1": True}, {"comparedTimeSlotResult2": True},{"comparedWaitListSizeResult":True}]}},
+            {"$project": {"CourseCode": "$code","TimeSlot": "$recordTime", "Section": "$sections.sectionId"}},
+            {"$sort": {"$recordTime":1,"$courseCode": 1, "$sections.sectionId": 1}},
+            {"$project": {"CourseCode": "$code", "TimeSlot": "$recordTime", "Section": "$sections.sectionId"}},
+            {"$group": {"_id": "$sections.sectionId","MatchedTimeSlot": {"$last": "$recordTime"}}},
+            {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits",
+                          "TimeSlot": "$MatchedTimeSlot", "Code": "$sections.sectionId",
+                          "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota",
+                          "Enrol": "$sections.enrol", "Wait": "$sections.wait","Satisfied": "Yes"}}
+        ]
+    )
+    print(list(listOfCourse))
+    recordNumber = 0
+    # After performing searching
+    for oneCourse in listOfCourse:
+        recordNumber = recordNumber + 1
+        tempCourseCode = oneCourse["CourseCode"]
+        tempCourseName = oneCourse["CourseName"]
+        tempNumberofCredit = oneCourse["NumberofCredit"]
+        tempTimeSlot = oneCourse["TimeSlot"]
+        tempSection = oneCourse["Section"]
+        tempCode = oneCourse["Code"]
+        tempDateAndTime = oneCourse["DateAndTime"]
+        tempQuota = oneCourse["Quota"]
+        tempEnrol = oneCourse["Enrol"]
+        tempWait = oneCourse["Avail"]
+        tempSatisfied = oneCourse["Satisfied"]
+        # print("{:s} {:s} {:d} {:s} {:d} {:s} {:d} {:d} {:d}".format(tempCourseCode, tempCourseName,
+        #                                                             tempNumberofCredit, tempSection, tempCode,
+        #                                                             tempDateAndTime, tempQuota, tempEnrol,
+        #                                                             tempWait))
 
 # to achiveve program requirement 5.4
 def waitingListSizePrediction(db):
@@ -182,8 +179,8 @@ def main():
         client = MongoClient("mongodb://localhost:27017")
 
         # Getting a Database named "university"
-        print("Getting a database named \"hkustclassquota\"")
-        db = client["hkustclassquota"]
+        print("Getting a database named \"hkust\"")
+        db = client["hkust"]
 
         while (True):
             displayMenu()
@@ -230,4 +227,4 @@ def main():
 # 	# If interested, you can refer to https://stackoverflow.com/a/15291961
 
 if __name__ == '__main__':
-	main()
+    main()
