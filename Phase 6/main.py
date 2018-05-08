@@ -514,9 +514,9 @@ def waitingListSizeTraining(ln):
 
     dataX, dataY = [], []
     for i in range(len(data_float_TwoDim)):
-        a = dataset[i:(i, 0)]
+        a = data_float_TwoDim[i:(i, 0)]
         dataX.append(a)
-        dataY.append(dataset[i, 0])
+        dataY.append(data_float_TwoDim[i, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
