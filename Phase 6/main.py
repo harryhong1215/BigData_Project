@@ -25,7 +25,7 @@ def collectionDroppingandEmptyCollectionCreating(db):
 # to achiveve program requirement 5.2
 class MongoSpider(scrapy.Spider):
     try:
-        name = 'ustclassquota'
+        name = 'mongo'
         mongo_uri = 'mongodb://localhost:27017'
 
         def __init__(self, *args, **kwargs):
@@ -34,7 +34,7 @@ class MongoSpider(scrapy.Spider):
                 url = f.read()
                 self.start_urls = [ url ]
             self.client = pymongo.MongoClient(self.mongo_uri)
-            self.db = self.client['hkustclassquota']
+            self.db = self.client['hkust']
 
             # used as cache for database to check whether 
             # courses are already inserted 
@@ -371,8 +371,8 @@ def main():
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.client = pymongo.MongoClient(self.mongo_uri)
-            print("Getting a database named \"hkustclassquota\"")
-            self.db = self.client['hkustclassquota']
+            print("Getting a database named \"hkust\"")
+            self.db = self.client['hkust']
 
             # used as cache for database to check whether 
             # courses are already inserted 
@@ -395,7 +395,7 @@ def main():
                     url = 'http://comp4332.com/realistic'
                 with open('url.txt', 'w') as f:
                     f.write(url)
-                subprocess.run('scrapy crawl ustclassquota', shell=True)
+                subprocess.run('scrapy crawl mongo', shell=True)
             elif (choice == "3"):
                 courseSeachbyKeyword(self.db)
             elif (choice == "4"):
