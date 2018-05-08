@@ -302,9 +302,9 @@ def waitingListSizePrediction():
             if (dataframe5 = ts):
                 result = pandas.read_csv("COMP1942Result_5", usecols=[2])
                 predictedResult[5] = result
-            for i in range(predicted):
-                print(predicted[i])
-                if (i == range(predicted)):
+            for i in range(predictedResult):
+                print(predictedResult[i])
+                if (i == range(predictedResult)):
                     break
                 else:
                     print(",")
@@ -317,7 +317,10 @@ def waitingListSizeTraining():
     # Write all the attributes to csv
     listOfWaitingList = db.courses.aggregate(
     [
-        {'$match': {{"code": /. * COMP1942 * /, "class_name": lectureNumber}}},
+        #{'$match': {{"code": ^COMP42, "class_name": lectureNumber}}},
+        #{'$match': {{"code": ^COMP43, "class_name": lectureNumber}}},
+        #{'$match': {{"code": ^RMBI, "class_name": lectureNumber}}},
+        {'$match': {{"code": "COMP1942", "class_name": lectureNumber}}},
         {'$project': {"TimeSlot": "$recordTime", "Enrol": "$sections.enrol", "Wait": "$sections.wait", _id: 0}},
         {'$sort': {"TimeSlot": 1}}
     ]
