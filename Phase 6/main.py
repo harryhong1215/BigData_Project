@@ -313,7 +313,7 @@ def waitingListSizePrediction():
         print("There is no lecture section and thus there is no prediction result.")
 
 # to achiveve program requirement 5.5
-def waitingListSizeTraining(ln):
+def waitingListSizeTraining(db, ln):
     
     # Write all the attributes to csv
     listOfWaitingList = db.courses.aggregate(
@@ -373,7 +373,7 @@ def waitingListSizeTraining(ln):
     model.fit(numpyX, numpyY, epochs=2000, batch_size=20)
 
     # Evaluate the 1st model
-    scores = model.evaluate(X_float, Y_float)
+    scores = model.evaluate(numpyX, numpyY)
 
     # Predict the 1st set of result using 1st model
     newY_TwoDim = model.predict(numpyX, batch_size=1)
@@ -415,7 +415,7 @@ def waitingListSizeTraining(ln):
     model.fit(numpyX, numpyY, epochs=2000, batch_size=20)
 
     # Evaluate the 2nd model
-    scores = model.evaluate(X_float, Y_float)
+    scores = model.evaluate(numpyX, numpyY)
 
     # Predict the 2nd set of result using 2nd model
     newY_TwoDim = model.predict(numpyX, batch_size=1)
@@ -456,7 +456,7 @@ def waitingListSizeTraining(ln):
     model.fit(numpyX, numpyY, epochs=1500, batch_size=4)
 
     # Evaluate the 3rd model
-    scores = model.evaluate(X_float, Y_float)
+    scores = model.evaluate(numpyX, numpyY)
 
     # Predict the 3rd set of result using 3rd model
     newY_TwoDim = model.predict(numpyX, batch_size=1)
@@ -496,7 +496,7 @@ def waitingListSizeTraining(ln):
     model.fit(numpyX, numpyY, validation_split=0.2, epochs=3000, batch_size=1)
 
     # Evaluate the 4th model
-    scores = model.evaluate(X_float, Y_float)
+    scores = model.evaluate(numpyX, numpyY)
 
     # Predict the 4th set of result using 4th model
     newY_TwoDim = model.predict(numpyX, batch_size=1)
@@ -536,7 +536,7 @@ def waitingListSizeTraining(ln):
     model.fit(numpyX, numpyY, validation_split=0.2, epochs=4000, batch_size=1)
 
     # Evaluate the 5th model
-    scores = model.evaluate(X_float, Y_float)
+    scores = model.evaluate(numpyX, numpyY)
 
     # Predict the 5th set of result using 5th model
     newY_TwoDim = model.predict(numpyX, batch_size=1)
@@ -604,7 +604,7 @@ def main():
             elif (choice == "5"):
                 waitingListSizePrediction()
             elif (choice == "6"):
-                waitingListSizeTraining()
+                waitingListSizeTraining(self.db)
             elif (choice == "7"):
                 break
             else:
