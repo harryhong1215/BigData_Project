@@ -274,33 +274,33 @@ def courseSeachbyWaitingListSize(db):
             print(" no")
 
 # to achiveve program requirement 5.4
-def waitingListSizePrediction():
+def waitingListSizePrediction(db):
     cc = input("Please enter the course code: ")
     ln = input("Please enter the lecture number (ln): ")
     ts = input("Please enter the time slot: ")
     
     matched = db.courses.aggregate({'$project': {"comparedTimeSlotResult1": {'$eq': ["$sections.class_name", ln]}}})
     predictedResult = []
-    if (result):
+    if (matched):
         if (cc == "COMP1942"):
             dataframe1 = pandas.read_csv("COMP1942Result_1", usecols=[1])
             dataframe2 = pandas.read_csv("COMP1942Result_2", usecols=[1])
             dataframe3 = pandas.read_csv("COMP1942Result_3", usecols=[1])
             dataframe4 = pandas.read_csv("COMP1942Result_4", usecols=[1])
             dataframe5 = pandas.read_csv("COMP1942Result_5", usecols=[1])
-            if (dataframe1 = ts):
+            if (dataframe1 == ts):
                 result = pandas.read_csv("COMP1942Result_1", usecols=[2])
                 predictedResult[1] = result
-            if (dataframe2 = ts):
+            if (dataframe2 == ts):
                 result = pandas.read_csv("COMP1942Result_2", usecols=[2])
                 predictedResult[2] = result
-            if (dataframe3 = ts):
+            if (dataframe3 == ts):
                 result = pandas.read_csv("COMP1942Result_3", usecols=[2])
                 predictedResult[3] = result
-            if (dataframe4 = ts):
+            if (dataframe4 == ts):
                 result = pandas.read_csv("COMP1942Result_4", usecols=[2])
                 predictedResult[4] = result
-            if (dataframe5 = ts):
+            if (dataframe5 == ts):
                 result = pandas.read_csv("COMP1942Result_5", usecols=[2])
                 predictedResult[5] = result
             for i in range(predictedResult):
@@ -474,7 +474,7 @@ def waitingListSizeTraining(db, ln):
 
     dataX, dataY = [], []
     for i in range(len(data_float_TwoDim)):
-        a = dataset[i, 0]
+        a = data_float_TwoDim[i, 0]
         dataX.append(a)
         dataY.append(data_float_TwoDim[i, 0])
     numpyX = numpy.array(dataX)
@@ -508,7 +508,7 @@ def waitingListSizeTraining(db, ln):
 
     # Model 5: LSTM (Parameter set B)
     # Train the csv
-    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    dataframe = pandas.read_csv(filename, usecols=[1])
     data_int_TwoDim = dataframe.values
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
@@ -602,7 +602,7 @@ def main():
             elif (choice == "4"):
                 courseSeachbyWaitingListSize(self.db)
             elif (choice == "5"):
-                waitingListSizePrediction()
+                waitingListSizePrediction(self.db)
             elif (choice == "6"):
                 waitingListSizeTraining(self.db)
             elif (choice == "7"):
