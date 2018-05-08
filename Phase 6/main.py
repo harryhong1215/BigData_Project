@@ -9,6 +9,7 @@ from keras.models import model_from_json
 import numpy
 import pandas
 from keras.layers import Masking
+import time
 
 # to achiveve program requirement 5.1
 def collectionDroppingandEmptyCollectionCreating(db):
@@ -312,15 +313,15 @@ def waitingListSizePrediction():
         print("There is no lecture section and thus there is no prediction result.")
 
 # to achiveve program requirement 5.5
-def waitingListSizeTraining():
+def waitingListSizeTraining(ln):
     
     # Write all the attributes to csv
     listOfWaitingList = db.courses.aggregate(
     [
-        #{'$match': {{"code": ^COMP42, "class_name": lectureNumber}}},
-        #{'$match': {{"code": ^COMP43, "class_name": lectureNumber}}},
-        #{'$match': {{"code": ^RMBI, "class_name": lectureNumber}}},
-        {'$match': {{"code": "COMP1942", "class_name": lectureNumber}}},
+        #{'$match': {{"code": ^COMP42, "class_name": ln}}},
+        #{'$match': {{"code": ^COMP43, "class_name": ln}}},
+        #{'$match': {{"code": ^RMBI, "class_name": ln}}},
+        {'$match': {{"code": "COMP1942", "class_name": ln}}},
         {'$project': {"TimeSlot": "$recordTime", "Enrol": "$sections.enrol", "Wait": "$sections.wait", _id: 0}},
         {'$sort': {"TimeSlot": 1}}
     ]
@@ -337,22 +338,22 @@ def waitingListSizeTraining():
     csv = open(filename, "w") 
     recordNumber = 0
     for recordNumber in listOfWaitingList:
-        row = Timeslot + "," + Enrol + ","+ Wait +"\n"
+        row = listOfWaitingList["Timeslot"] + "," + listOfWaitingList["Enrol"] + ","+  listOfWaitingList["Wait"] +"\n"
         csv.write(row)
 
 
     # Model 1: Neural Network (Parameter set A)
     # Train the csv
-    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    dataframe = pandas.read_csv(filename, usecols=[1])
     data_int_TwoDim = dataframe.values
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
     look_back = 3
     dataX, dataY = [], []
-    for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+    for i in range(len(data_float_TwoDim)-look_back):
+        a = data_float_TwoDim[i:(i+look_back), 0]
         dataX.append(a)
-        dataY.append(dataset[i + look_back, 0])
+        dataY.append(data_float_TwoDim[i + look_back, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
@@ -384,16 +385,16 @@ def waitingListSizeTraining():
 
     # Model 2: Neural Network (Parameter set B)
     # Train the csv
-    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    dataframe = pandas.read_csv(filename, usecols=[1])
     data_int_TwoDim = dataframe.values
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
     look_back = 3
     dataX, dataY = [], []
-    for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+    for i in range(len(data_float_TwoDim)-look_back):
+        a = data_float_TwoDim[i:(i+look_back), 0]
         dataX.append(a)
-        dataY.append(dataset[i + look_back, 0])
+        dataY.append(data_float_TwoDim[i + look_back, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
@@ -426,16 +427,16 @@ def waitingListSizeTraining():
 
     # Model 3: Neural Network (Parameter set C)
     # Train the csv
-    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    dataframe = pandas.read_csv(filename, usecols=[1])
     data_int_TwoDim = dataframe.values
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
     look_back = 4
     dataX, dataY = [], []
-    for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+    for i in range(len(data_float_TwoDim)-look_back):
+        a = data_float_TwoDim[i:(i+look_back), 0]
         dataX.append(a)
-        dataY.append(dataset[i + look_back, 0])
+        dataY.append(data_float_TwoDim[i + look_back, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
@@ -467,15 +468,15 @@ def waitingListSizeTraining():
 
     # Model 4: LSTM (Parameter set A)
     # Train the csv
-    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    dataframe = pandas.read_csv(filename, usecols=[1])
     data_int_TwoDim = dataframe.values
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
     dataX, dataY = [], []
-    for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+    for i in range(len(data_float_TwoDim)):
+        a = dataset[i, 0]
         dataX.append(a)
-        dataY.append(dataset[i + look_back, 0])
+        dataY.append(data_float_TwoDim[i, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
@@ -512,10 +513,10 @@ def waitingListSizeTraining():
     data_float_TwoDim = data_int_TwoDim.astype(float)
 
     dataX, dataY = [], []
-    for i in range(len(dataset)-look_back):
-        a = dataset[i:(i+look_back), 0]
+    for i in range(len(data_float_TwoDim)):
+        a = dataset[i:(i, 0)]
         dataX.append(a)
-        dataY.append(dataset[i + look_back, 0])
+        dataY.append(dataset[i, 0])
     numpyX = numpy.array(dataX)
     numpyY = numpy.array(dataY)
 
