@@ -7,6 +7,7 @@ from keras.layers import LSTM
 from keras.layers import Dense
 from keras.models import model_from_json
 import numpy
+import pandas
 from keras.layers import Masking
 
 # to achiveve program requirement 5.1
@@ -198,11 +199,11 @@ def courseSeachbyKeyword(db):
     print("Searching...")
     listOfCourse = db.courses.aggregate(
         [
-            {"$match": {"$ or":[{"title": "/. * keyword * /"}, {"description": "/.*keyword * /"}, {"intendedlearningoutcomes": "/.*keyword * /"}]}},
-            {"$project": { "CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits", "Section": "$sections.class_name",
-                           "SectionID": "$sections.sectionId", "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota",
-                           "Enrol": "$sections.enrol", "Wait": "$sections.wait", "_id": 0}},
-            {"$sort": {"courseCode": 1, "sections.sectionId": 1}}
+            {$match: {$ or:[{title: /. * keyword * /}, {description: /.*keyword * /}, {intendedlearningoutcomes: /.*keyword * /}]}}, 
+            {$project: { CourseCode: "$code", CourseName: "$title", NumberofCredit: "$credits", Section: "$sections.class_name", 
+            SectionID: "$sections.sectionId", DateAndTime: "$sections.offerings.dateAndTime", Quota: "$sections.quota",
+            Enrol: "$sections.enrol", Wait: "$sections.wait", _id: 0}}, 
+            {$sort: {courseCode: 1, "sections.sectionId": 1}}
         ]
     )
     recordNumber = 0
@@ -234,16 +235,17 @@ def courseSeachbyWaitingListSize(db):
     startTimeSlot = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
     endTimeSlot = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
     print("Searching...")
-    listOfCourse = db.s.aggregate(
+    listOfCourse = db.courses.aggregate(
     [
-        {"$project": {"comparedTimeSlotResult1": {"$gte": ["$recordTime", startTimeSlot]},"comparedTimeSlotResult2": {"$lte": ["$recordTime", endTimeSlot]}}},
-        {"$match": {"$and":[{"comparedTimeSlotResult1": True}, {"comparedTimeSlotResult2": True}]}},
-        {"$project": {"comparedWaitListSizeResult": {"$gte": ["$sections.wait", {"$multiply": ["$sections.quota", f]}]}}},
-        {"$match": {"comparedWaitListSizeResult": True}},
-        {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits", "TimeSlot": "$recordTime", "Section": "$sections.class_name", "Code": "$sections.sectionId",
-                      "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota", "Enrol": "$sections.enrol", "Wait": "$sections.wait", "Satisfied": "comparedWaitListSizeResult", "_id": 0}},
-        {"$sort": {"courseCode": 1, "sections.sectionId": 1}},
-        {"$group": {"_id": "$sections.sectionId", "MatchedTimeSlot": {"$max": "$recordTime"}}}
+        {$project: {comparedTimeSlotResult1: {$gte: ["$recordTime", startTimeSlot]}},
+        {comparedTimeSlotResult2: {$lte: ["$recordTime", endTimeSlot]}}},
+        {$match: {$and:[{comparedTimeSlotResult1: true}, {comparedTimeSlotResult2: true}]}},
+        {$project: {comparedWaitListSizeResult: {$gte: ["$sections.wait", {$multiply: ["$sections.quota", f]}]}}},
+        {$match: {comparedWaitListSizeResult: true}},
+        {$project: {CourseCode: "$code", CourseName: "$title", NumberofCredit: "$credits", TimeSlot: "$recordTime", Section: "$sections.class_name", Code: "$sections.sectionId",
+                DateAndTime: "$sections.offerings.dateAndTime", Quota: "$sections.quota", Enrol: "$sections.enrol", Wait: "$sections.wait", Satisfied: "comparedWaitListSizeResult", _id: 0}},
+        {$sort: {courseCode: 1, "sections.sectionId": 1}},
+        {$group: {_id: "$sections.sectionId", MatchedTimeSlot: {$max: "$recordTime"}}}
     ]
     )
     recordNumber = 0
@@ -265,83 +267,279 @@ def courseSeachbyWaitingListSize(db):
                                                                     tempNumberofCredit, tempSection, tempCode,
                                                                     tempDateAndTime, tempQuota, tempEnrol,
                                                                     tempWait))
-        if (tempSatisfied == True):
+        if (tempSatisfied == ture):
             print(" yes")
         else:
             print(" no")
 
 # to achiveve program requirement 5.4
-def waitingListSizePrediction(model):
+def waitingListSizePrediction():
     cc = input("Please enter the course code: ")
     ln = input("Please enter the lecture number (ln): ")
     ts = input("Please enter the time slot: ")
-   
-    # Read new data records
-    newrecordfilename = "new.csv"   
-    newX = numpy.loadtxt(newrecordfilename, delimiter=",")
-        
-    # Predict the target attribute of the new data based on a model
-    newY = model.predict(newX, batch_size=4)
-
-    # Save the predicted target attribute of the new data into a file
-    newYcategoricalPythonArray = []
-    recordNo = 0
-    for value in newY:
-        if (value < 0.5):
-            newYcategoricalPythonArray.append("No")
-        if (value >= 0.5):
-            newYcategoricalPythonArray.append("Yes")
-    newYcategorical = numpy.array(newYcategoricalPythonArray)
-    newYcategoricalReshape = newYcategorical.reshape(4, 1)
-    newYwithpredicted = numpy.append(newY, newYcategoricalReshape, axis=1)
-    resultfilename = "output-NN.csv"    
-    numpy.savetxt(resultfilename, newYwithpredicted, delimiter=",", fmt="%.10s")
-
-    matched = True
-    if (matched):
-        print("40,43,45,39,40")
+    
+    matched = db.courses.aggregate({'$project': {"comparedTimeSlotResult1": {'$eq': ["$sections.class_name", ln]}}})
+    predictedResult = []
+    if (result):
+        if (cc == "COMP1942"):
+            dataframe1 = pandas.read_csv("COMP1942Result_1", usecols=[1])
+            dataframe2 = pandas.read_csv("COMP1942Result_2", usecols=[1])
+            dataframe3 = pandas.read_csv("COMP1942Result_3", usecols=[1])
+            dataframe4 = pandas.read_csv("COMP1942Result_4", usecols=[1])
+            dataframe5 = pandas.read_csv("COMP1942Result_5", usecols=[1])
+            if (dataframe1 = ts):
+                result = pandas.read_csv("COMP1942Result_1", usecols=[2])
+                predictedResult[1] = result
+            if (dataframe2 = ts):
+                result = pandas.read_csv("COMP1942Result_2", usecols=[2])
+                predictedResult[2] = result
+            if (dataframe3 = ts):
+                result = pandas.read_csv("COMP1942Result_3", usecols=[2])
+                predictedResult[3] = result
+            if (dataframe4 = ts):
+                result = pandas.read_csv("COMP1942Result_4", usecols=[2])
+                predictedResult[4] = result
+            if (dataframe5 = ts):
+                result = pandas.read_csv("COMP1942Result_5", usecols=[2])
+                predictedResult[5] = result
+            for i in range(predicted):
+                print(predicted[i])
+                if (i == range(predicted)):
+                    break
+                else:
+                    print(",")
     else:
         print("There is no lecture section and thus there is no prediction result.")
 
 # to achiveve program requirement 5.5
 def waitingListSizeTraining():
-    # Write all the attributes to csv
     
-    # Train the csv
-    filename = "training.csv"   
-    dataset = numpy.loadtxt(filename, delimiter=",", dtype="str")
+    # Write all the attributes to csv
+    listOfWaitingList = db.courses.aggregate(
+    [
+        {'$match': {{"code": /. * COMP1942 * /, "class_name": lectureNumber}}},
+        {'$project': {"TimeSlot": "$recordTime", "Enrol": "$sections.enrol", "Wait": "$sections.wait", _id: 0}},
+        {'$sort': {"TimeSlot": 1}}
+    ]
+    )
+    recordNumber = 0
 
-    # Transform target attributes
-    X_str = dataset[:, 0:2]
-    X_float = X_str.astype(float)
-    Y_str = dataset[:, 2:3]
-    Y_shape = Y_str.shape
-    Y_result = numpy.zeros(Y_shape)
-    for x in range(0, Y_shape[0]):
-        if Y_str[x] == "Yes":
-            Y_result[x] = 1
-        if Y_str[x] == "No":
-            Y_result[x] = 0
-    Y_float = Y_result.astype(float)
+    for oneCourse in listOfWaitingList:
+        recordNumber = recordNumber + 1
+        listOfWaitingList["Timeslot"] = oneCourse["Timeslot"]
+        listOfWaitingList["Enrol"] = oneCourse["Enrol"]
+        listOfWaitingList["Wait"] = oneCourse["Wait"]
+
+    filename = "COMP1942Training_Timestamp.csv"
+    csv = open(filename, "w") 
+    recordNumber = 0
+    for recordNumber in listOfWaitingList:
+        row = Timeslot + "," + Enrol + ","+ Wait +"\n"
+        csv.write(row)
+
+
+    # Model 1: Neural Network (Parameter set A)
+    # Train the csv
+    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    data_int_TwoDim = dataframe.values
+    data_float_TwoDim = data_int_TwoDim.astype(float)
+
+    look_back = 3
+    dataX, dataY = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    numpyX = numpy.array(dataX)
+    numpyY = numpy.array(dataY)
 
     # Generate random seed
-    numpy.random.seed(4332)
+    numpy.random.seed(time.time())
 
-    # Define the model
+    # Define the 1st model
     model = Sequential()
-    model.add(Dense(4, input_dim=2, activation='relu'))
+    model.add(Dense(20, input_dim=look_back, activation='relu'))
+    model.add(Dense(10, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
     
-    # Compile the model
+    # Compile the 1st model
     model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
     
-    # Fit the model
-    model.fit(X_float, Y_float, epochs=1500, batch_size=4)
+    # Fit the 1st model
+    model.fit(numpyX, numpyY, epochs=2000, batch_size=20)
 
-    # Evaluate the model
+    # Evaluate the 1st model
     scores = model.evaluate(X_float, Y_float)
 
-    return model
+    # Predict the 1st set of result using 1st model
+    newY_TwoDim = model.predict(numpyX, batch_size=1)
+    
+    # Save the 1st set of predicted target attribute of the new data into a file
+    numpy.savetxt("COMP1942Result_1", newY_TwoDim, delimiter=",", fmt="%.10f")
+    
+    print("Waiting list size training is successful")
+
+    # Model 2: Neural Network (Parameter set B)
+    # Train the csv
+    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    data_int_TwoDim = dataframe.values
+    data_float_TwoDim = data_int_TwoDim.astype(float)
+
+    look_back = 3
+    dataX, dataY = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    numpyX = numpy.array(dataX)
+    numpyY = numpy.array(dataY)
+
+    # Generate random seed
+    numpy.random.seed(time.time())
+
+    # Define the 2nd model
+    model = Sequential()
+    model.add(Dense(30, input_dim=look_back, activation='relu'))
+    model.add(Dense(20, activation='relu'))
+    model.add(Dense(10, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+    
+    # Compile the 2nd model
+    model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+    
+    # Fit the 2nd model
+    model.fit(numpyX, numpyY, epochs=2000, batch_size=20)
+
+    # Evaluate the 2nd model
+    scores = model.evaluate(X_float, Y_float)
+
+    # Predict the 2nd set of result using 2nd model
+    newY_TwoDim = model.predict(numpyX, batch_size=1)
+    
+    # Save the 2nd set of predicted target attribute of the new data into a file
+    numpy.savetxt("COMP1942Result_2", newY_TwoDim, delimiter=",", fmt="%.10f")
+    
+    print("Waiting list size training is successful")
+
+    # Model 3: Neural Network (Parameter set C)
+    # Train the csv
+    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    data_int_TwoDim = dataframe.values
+    data_float_TwoDim = data_int_TwoDim.astype(float)
+
+    look_back = 4
+    dataX, dataY = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    numpyX = numpy.array(dataX)
+    numpyY = numpy.array(dataY)
+
+    # Generate random seed
+    numpy.random.seed(time.time())
+
+    # Define the 3rd model
+    model.add(Dense(30, input_dim=look_back, activation='relu'))
+    model.add(Dense(20, activation='relu'))
+    model.add(Dense(10, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+    
+    # Compile the 3rd model
+    model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+    
+    # Fit the 3rd model
+    model.fit(numpyX, numpyY, epochs=1500, batch_size=4)
+
+    # Evaluate the 3rd model
+    scores = model.evaluate(X_float, Y_float)
+
+    # Predict the 3rd set of result using 3rd model
+    newY_TwoDim = model.predict(numpyX, batch_size=1)
+    
+    # Save the 3rd set of predicted target attribute of the new data into a file
+    numpy.savetxt("COMP1942Result_3", newY_TwoDim, delimiter=",", fmt="%.10f")
+    
+    print("Waiting list size training is successful")
+
+    # Model 4: LSTM (Parameter set A)
+    # Train the csv
+    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    data_int_TwoDim = dataframe.values
+    data_float_TwoDim = data_int_TwoDim.astype(float)
+
+    dataX, dataY = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    numpyX = numpy.array(dataX)
+    numpyY = numpy.array(dataY)
+
+    # Generate random seed
+    numpy.random.seed(time.time())
+
+    # Define the 4th model
+    model = Sequential()
+    model.add(Masking(mask_value=-1, input_shape=(4, 2)))
+    model.add(LSTM(1))
+    model.add(Dense(1, activation='relu'))
+    
+    # Compile the 4th model
+    model.compile(loss="mean_squared_error", optimizer="adam", metrics=["mean_squared_error"])
+    
+    # Fit the 4th model
+    model.fit(numpyX, numpyY, validation_split=0.2, epochs=3000, batch_size=1)
+
+    # Evaluate the 4th model
+    scores = model.evaluate(X_float, Y_float)
+
+    # Predict the 4th set of result using 4th model
+    newY_TwoDim = model.predict(numpyX, batch_size=1)
+    
+    # Save the 4th set of predicted target attribute of the new data into a file
+    numpy.savetxt("COMP1942Result_4", newY_TwoDim, delimiter=",", fmt="%.10f")
+    
+    print("Waiting list size training is successful")
+
+    # Model 5: LSTM (Parameter set B)
+    # Train the csv
+    dataframe = pandas.read_csv(filename, usecols=[1:3])
+    data_int_TwoDim = dataframe.values
+    data_float_TwoDim = data_int_TwoDim.astype(float)
+
+    dataX, dataY = [], []
+    for i in range(len(dataset)-look_back):
+        a = dataset[i:(i+look_back), 0]
+        dataX.append(a)
+        dataY.append(dataset[i + look_back, 0])
+    numpyX = numpy.array(dataX)
+    numpyY = numpy.array(dataY)
+
+    # Generate random seed
+    numpy.random.seed(time.time())
+
+    # Define the 5th model
+    model = Sequential()
+    model.add(Masking(mask_value=-1, input_shape=(4, 2)))
+    model.add(LSTM(1))
+    model.add(Dense(1, activation='relu'))
+    
+    # Compile the 5th model
+    model.compile(loss="mean_squared_error", optimizer="adam", metrics=["mean_squared_error"])
+    
+    # Fit the 5th model
+    model.fit(numpyX, numpyY, validation_split=0.2, epochs=4000, batch_size=1)
+
+    # Evaluate the 5th model
+    scores = model.evaluate(X_float, Y_float)
+
+    # Predict the 5th set of result using 5th model
+    newY_TwoDim = model.predict(numpyX, batch_size=1)
+    
+    # Save the 5th set of predicted target attribute of the new data into a file
+    numpy.savetxt("COMP1942Result_5", newY_TwoDim, delimiter=",", fmt="%.10f")
+    
     print("Waiting list size training is successful")
 
 
@@ -400,7 +598,7 @@ def main():
             elif (choice == "4"):
                 courseSeachbyWaitingListSize(self.db)
             elif (choice == "5"):
-                waitingListSizePrediction(model)
+                waitingListSizePrediction()
             elif (choice == "6"):
                 waitingListSizeTraining()
             elif (choice == "7"):
