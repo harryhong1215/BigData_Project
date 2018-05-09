@@ -33,7 +33,7 @@ def dataCrawling(db):
         # address = input("Please enter the URL of the website you want to crawl: ")
         url = input('Please enter a URL for data crawling: ')
         if (url == "default"):
-            url = 'http://comp4332.com/trial'
+            url = 'http://comp4332.com/realistic/'
             with open('url.txt', 'w') as f:
                 f.write(url)
             strCommand = "scrapy crawl mongo"
@@ -60,18 +60,60 @@ def courseSeachbyKeyword(db):
     REGEX = re.compile(regex_text, re.IGNORECASE)
     listOfCourse = db.courses.aggregate(
         [
+            {"$match": {'$or': [{'title': {'$regex': REGEX}}, {'description':{'$regex': REGEX}},{'remarks': {'$regex': REGEX}}]}},
+            {"$project": {"code":1, "title":1, "credits":1,"sections":1, "_id": 0}},
+            {"$sort":{"code":1}}
+
+        ],allowDiskUse=True )
+
+    # print(list(listOfCourse))
+    for oneCourse in listOfCourse:
+        code = str(oneCourse["code"])
+        title = str(oneCourse["title"])
+        credits = str(oneCourse["credits"])
+        sectionstime = oneCourse["sections"][0]["recordTime"]
+        print(code,title,credits)
+        # result1 = db.courses.aggregate([
+        #     {"$unwind": "$sections"},
+        #     {"$project": {"sections": 1}},
+        #     {"$match": {"title":title}},
+        #     {"$project": {"sections": 1}},
+        #     {"$group":{"_id": "$sectionId"}},
+        #     {"$project": {"sections":1}}
+        # ], allowDiskUse=True)
+
+        result1 = db.courses.aggregate([
             {"$unwind": "$sections"},
-    {"$match": {'$or': [{'title': {'$regex': REGEX}}, {'description':{'$regex': REGEX}},{'intendedLearningOutcomes': {'$regex': REGEX}}
-        ]}},
-            {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits",
-                        "SectionID": "$sections.sectionId", "DateAndTime": "$sections.offerings.dateAndTime",
-                          "Quota": "$sections.quota",
-                          "Enrol": "$sections.enrol", "Wait": "$sections.wait","Avail":"$sections.avail", "_id": 0}},
-            {"$sort":{"CourseCode":1}}
-        ])
+            {"$match": {"$and": [{"sections.recordTime": sectionstime},
+                                 {"code": code}]}},
+            {"$project": {"sections": 1}},
+            {"$sort": {"sections.sectionId": 1}}
+        ], allowDiskUse=True)
+        for suboneCourse in result1:
+            sections1 = suboneCourse["sections"]
+            sid = sections1["sectionId"]
+            date_and_time = sections1["offerings"][0]["dateAndTime"]
+            quota = str(sections1["quota"])
+            enrol = str(sections1["enrol"])
+            wait = str(sections1["wait"])
+            avail=str(sections1["avail"])
+            print(sid,date_and_time,quota,enrol,wait,avail)
 
-    print(list(listOfCourse))
-
+    recordNumber=0
+    # for oneCourse in listOfCourse:
+    #     recordNumber = recordNumber + 1
+    #     tempCourseCode = oneCourse["CourseCode"]
+    #     tempCourseName = oneCourse["CourseName"]
+    #     tempNumberofCredit = oneCourse["NumberofCredit"]
+    #     tempSection = oneCourse["SectionID"]
+    #     tempDateAndTime = oneCourse["DateAndTime"]
+    #     tempQuota = oneCourse["Quota"]
+    #     tempEnrol = oneCourse["Enrol"]
+    #     tempWait = oneCourse["Wait"]
+    #     tempAvail = oneCourse["Avail"]
+    #
+    #     print(tempCourseCode, tempCourseName, tempNumberofCredit, tempSection, tempDateAndTime, tempQuota, tempEnrol,
+    #           tempWait, tempAvail)
 
 # to achiveve program requirement 5.3.2
 def courseSeachbyWaitingListSize(db):
@@ -79,35 +121,94 @@ def courseSeachbyWaitingListSize(db):
         "Please enter the multiple of the waiting list size with enrolled student which is a non-negative number: ")
     while (float(f) < 0):
         f = input("The number is invalid. Please input again: ")
+
     start_ts = input("Please enter the starting time slot: ")
     end_ts = input("Please enter the ending time slot: ")
-    startTimeSlot = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
-    endTimeSlot = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
-
+    # startTimeSlot = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
+    # endTimeSlot = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
+    start_ts = datetime.datetime.strptime(start_ts, "%Y-%m-%dT%H:%M:%S")
+    end_ts = datetime.datetime.strptime(end_ts, "%Y-%m-%dT%H:%M:%S")
     print("Searching...")
-    listOfCourse = db.courses.aggregate(
-        [
+    # listOfCourse = db.courses.aggregate(
+    #     [
+    #         {"$unwind": "$sections"},
+    #         {"$project": {
+    #             "comparedTimeSlotResult1": {"$gte": ["sections.recordTime", start_ts]},
+    #             "comparedTimeSlotResult2": {"$lte": ["sections.recordTime", end_ts]},
+    #             "comparedWaitListSizeResult": {"$gte": ["$sections.wait", {"$multiply": ["$sections.enrol", float(f)]}]}
+    #                       }},
+    #         {"$match": {"$and": [{"comparedTimeSlotResult1": True}, {"comparedTimeSlotResult2": True},{"comparedWaitListSizeResult":True}]}},
+    #         {"$project": {"CourseCode": "$code","TimeSlot": "$recordTime", "Section": "$sections.sectionId"
+    #                       }},
+    #         {"$sort": {"TimeSlot":1,"CourseCode": 1, "Section": 1}},
+    #         {"$project": {"CourseCode": 1, "TimeSlot": 1, "Section": 1}},
+    #         {"$group": {"_id": "$sections.sectionId","MatchedTimeSlot": {"$last": "$recordTime"}}},
+    #         {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits",
+    #                       "TimeSlot": "$MatchedTimeSlot", "Code": "$_id",
+    #                       "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota",
+    #                       "Enrol": "$sections.enrol", "Wait": "$sections.wait","Satisfied":"Yes"}}
+    #     ], allowDiskUse=True
+    # )
+    # print(list(listOfCourse))
+    REGEX = re.compile('L\d+', re.IGNORECASE)
+    result = db.courses.aggregate([
+        {"$unwind": "$sections"},
+        {"$project": {"fxenrol": {"$multiply": ["$sections.enrol", float(f)]}, "code": 1, "title": 1, "credits": 1,
+                      "sections": 1}},
+        {"$project": {"compareResult": {"$gte": ["$sections.wait", "$fxenrol"]}, "code": 1, "title": 1, "credits": 1,
+                      "sections": 1}},
+        {"$match": {"$and": [{"compareResult": True}, {"sections.recordTime": {"$gte": start_ts}},
+                             {"sections.recordTime": {"$lte": end_ts}}]}},
+        {"$project": {"code": 1, "title": 1, "credits": 1, "sections": 1, "_id": 0, "compareResult": 1}},
+        {"$sort": {"sections.sectionId": 1}},
+        {"$group": {"_id": {"code": "$code", "title": "$title", "credits": "$credits"},
+                    "match_ts": {"$max": "$sections.recordTime"}, "sections": {
+                "$push": {"recordTime": "$sections.recordTime", "sectionId": "$sections.sectionId",
+                          "offerings": "$sections.offerings", "quota": "$sections.quota", "enrol": "$sections.enrol",
+                          "wait": "$sections.wait", "avail": "$sections.avail", "Satisfied": "$compareResult"}}}},
+        {"$unwind": "$sections"},
+        # // delete sections that not in the lasest time slot
+        {"$project": {"compareResult": {"$eq": ["$sections.recordTime", "$match_ts"]}, "sections": 1, "match_ts": 1}},
+        {"$match": {"compareResult": True}},
+        {"$match": {"sections.sectionId": {'$regex': REGEX}}},
+        {"$group": {"_id": "$_id", "match_ts": {"$max": "$sections.recordTime"}, "sections": {
+            "$push": {"recordTime": "$sections.recordTime", "sectionId": "$sections.sectionId",
+                      "offerings": "$sections.offerings", "quota": "$sections.quota", "enrol": "$sections.enrol",
+                      "wait": "$sections.wait", "avail": "$sections.avail", "Satisfied": "$sections.Satisfied"}}}},
+        {"$project": {"code": "$_id.code", "title": "$_id.title", "credits": "$_id.credits", "sections": 1,
+                      "match_ts": 1}},
+        {"$sort": {"code": 1}}
+        ], allowDiskUse=True)
+
+    # a = 0
+    for oneCourse in result:
+        code = str(oneCourse["code"])
+        title = str(oneCourse["title"])
+        credits = str(oneCourse["credits"])
+        sections = oneCourse["sections"]
+        match_ts = str(oneCourse["match_ts"])
+        print(code,title,credits,match_ts)
+
+        result1 = db.courses.aggregate([
             {"$unwind": "$sections"},
-            {"$project": {
-                "comparedTimeSlotResult1": {"$gte": ["$sections.recordTime", startTimeSlot]},
-                "comparedTimeSlotResult2": {"$lte": ["$sections.recordTime", endTimeSlot]},
-                "comparedWaitListSizeResult": {"$gte": ["$sections.wait", {"$multiply": ["$sections.enrol", float(f)]}]}
-                          }},
-            {"$match": {"$and": [{"comparedTimeSlotResult1": True}, {"comparedTimeSlotResult2": True},{"comparedWaitListSizeResult":True}]}},
-            {"$project": {"CourseCode": "$code","TimeSlot": "$recordTime", "Section": "$sections.sectionId"
-                          }},
-            {"$sort": {"TimeSlot":1,"CourseCode": 1, "Section": 1}},
-            {"$project": {"CourseCode": 1, "TimeSlot": 1, "Section": 1}},
-            {"$group": {"_id": "$sections.sectionId","MatchedTimeSlot": {"$last": "$recordTime"}}},
-            {"$project": {"CourseCode": "$code", "CourseName": "$title", "NumberofCredit": "$credits",
-                          "TimeSlot": "$MatchedTimeSlot", "Code": "$_id",
-                          "DateAndTime": "$sections.offerings.dateAndTime", "Quota": "$sections.quota",
-                          "Enrol": "$sections.enrol", "Wait": "$sections.wait","Satisfied":"Yes"}}
-        ]
-    )
-
-
-    print(list(listOfCourse))
+            {"$match": {"$and": [{"sections.recordTime": datetime.datetime.strptime(match_ts, '%Y-%m-%d %H:%M:%S')},
+                                 {"code": code}]}},
+            {"$project": {"fxenrol": {"$multiply": ["$sections.enrol", float(f)]}, "code": 1, "title": 1, "credits": 1,
+                          "sections": 1}},
+            {"$project": {"Satisfied": {"$gte": ["$sections.wait", "$fxenrol"]}, "code": 1, "title": 1, "credits": 1,
+                          "sections": 1}},
+            {"$sort": {"code": 1, "sections.sectionId": 1}}
+            ], allowDiskUse=True)
+        for suboneCourse in result1:
+            sections1 = suboneCourse["sections"]
+            satisfied = str(suboneCourse["Satisfied"])
+            sid = sections1["sectionId"]
+            date_and_time = sections1["offerings"][0]["dateAndTime"]
+            quota = str(sections1["quota"])
+            enrol = str(sections1["enrol"])
+            wait = str(sections1["wait"])
+            avail = str(sections1["avail"])
+            print(sid,date_and_time,quota,enrol,wait, avail,satisfied)
 
 
 # to achiveve program requirement 5.4
@@ -175,7 +276,15 @@ def waitingListSizeTraining(db,ln):
     csv = open(filename, "w")
     recordNumber = 0
     for recordNumber in listOfWaitingList:
+        recordNumber = recordNumber + 1
         row = listOfWaitingList["Timeslot"] + "," + listOfWaitingList["Enrol"] + "," + listOfWaitingList["Wait"] + "\n"
+        csv.write(row)
+
+    filename2 = "COMP1942Training_Number.csv"
+    csv = open(filename2, "w")
+    recordNumber = 0
+    for recordNumber in listOfWaitingList:
+        row = recordNumber + "," + listOfWaitingList["Enrol"] + "," + listOfWaitingList["Wait"] + "\n"
         csv.write(row)
 
     # Model 1: Neural Network (Parameter set A)
